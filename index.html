@@ -1,0 +1,2725 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>軌道星隊シゴセンジャー 〜明石時間防衛大作戦〜</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================
+           全体レイアウト＆カスタムスタイリング
+           ========================================= */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #1a2a4a 0%, #090e1a 100%);
+            color: #fff;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 960px;
+            margin: 10px auto;
+            padding: 0 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ヘッダータイトル */
+        .game-header {
+            text-align: center;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0, 180, 255, 0.8);
+        }
+
+        .game-header h1 {
+            font-size: clamp(1.1rem, 3vw, 1.8rem);
+            letter-spacing: 0.05em;
+            background: linear-gradient(90deg, #ff4d4d, #ffffff, #3399ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* キャンバスコンテナ */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #0f172a;
+            border: 4px solid #38bdf8;
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.5);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* オーバーレイUI（タイトル・クリア・ゲームオーバー） */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .overlay h2 {
+            font-size: clamp(1.4rem, 4vw, 2.4rem);
+            margin-bottom: 12px;
+            color: #fde047;
+            text-shadow: 0 4px 0 #b45309;
+        }
+
+        .overlay p {
+            font-size: clamp(0.85rem, 2vw, 1.05rem);
+            line-height: 1.6;
+            max-width: 650px;
+            margin-bottom: 18px;
+            color: #e2e8f0;
+        }
+
+        .controls-guide {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+            font-size: clamp(0.75rem, 1.8vw, 0.95rem);
+            text-align: left;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 8px 16px;
+            width: 100%;
+            max-width: 640px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #0284c7;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            margin-right: 6px;
+            box-shadow: 0 2px 0 #0369a1;
+        }
+
+        /* ゲーム用リッチボタン */
+        .btn-action {
+            background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+            color: #fff;
+            border: 2px solid #fca5a5;
+            border-radius: 999px;
+            padding: 12px 32px;
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
+            font-weight: 900;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #7f1d1d, 0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.1s, box-shadow 0.1s, filter 0.2s;
+        }
+
+        .btn-action:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-action:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #7f1d1d, 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 画面下部のバーチャルコントローラー（PCクリック・スマホタッチ両対応） */
+        #control-bar {
+            width: 100%;
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #334155;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pad-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .game-btn {
+            border: none;
+            border-radius: 14px;
+            font-family: inherit;
+            font-weight: 900;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 14px;
+            min-width: 56px;
+            min-height: 52px;
+            transition: transform 0.08s, filter 0.1s;
+            touch-action: manipulation;
+        }
+
+        .game-btn:active, .game-btn.active {
+            transform: translateY(3px) scale(0.96);
+            filter: brightness(1.2);
+        }
+
+        .btn-move {
+            background: linear-gradient(180deg, #475569 0%, #1e293b 100%);
+            border: 2px solid #94a3b8;
+            box-shadow: 0 4px 0 #0f172a;
+            font-size: 1.2rem;
+        }
+
+        .btn-jump {
+            background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+            border: 2px solid #6ee7b7;
+            box-shadow: 0 4px 0 #064e3b;
+        }
+
+        .btn-attack {
+            background: linear-gradient(180deg, #f97316 0%, #c2410c 100%);
+            border: 2px solid #fdba74;
+            box-shadow: 0 4px 0 #7c2d12;
+        }
+
+        .btn-switch {
+            background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+            border: 2px solid #93c5fd;
+            box-shadow: 0 4px 0 #1e3a8a;
+        }
+
+        .btn-time {
+            background: linear-gradient(180deg, #eab308 0%, #a16207 100%);
+            border: 2px solid #fef08a;
+            box-shadow: 0 4px 0 #713f12;
+            color: #1e1b4b;
+        }
+
+        .btn-sub {
+            font-size: 0.65rem;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        /* 会話デモボックス */
+        #dialogue-box {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            background: rgba(15, 23, 42, 0.94);
+            border: 3px solid #facc15;
+            border-radius: 14px;
+            padding: 12px 18px;
+            z-index: 8;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.8);
+            cursor: pointer;
+        }
+
+        #dialogue-box.hidden {
+            display: none;
+        }
+
+        #dialogue-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #1e293b;
+            border: 2px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        #dialogue-content {
+            flex: 1;
+            text-align: left;
+        }
+
+        #dialogue-speaker {
+            font-size: 0.85rem;
+            color: #facc15;
+            margin-bottom: 4px;
+        }
+
+        #dialogue-text {
+            font-size: clamp(0.85rem, 2vw, 1rem);
+            color: #fff;
+            line-height: 1.4;
+        }
+
+        #dialogue-next {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div class="game-header">
+        <h1>★ 軌道星隊シゴセンジャー 〜明石時間防衛大作戦〜 ★</h1>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- ボス戦前の漫才掛け合いデモ -->
+        <div id="dialogue-box" class="hidden" onclick="advanceDialogue()">
+            <div id="dialogue-avatar">😈</div>
+            <div id="dialogue-content">
+                <div id="dialogue-speaker">ブラック星博士</div>
+                <div id="dialogue-text">よく来たなシゴセンジャー！</div>
+            </div>
+            <div id="dialogue-next">▼ クリック/Z</div>
+        </div>
+
+        <!-- タイトル画面オーバーレイ -->
+        <div id="start-screen" class="overlay">
+            <h2>明石の標準時を守り抜け！</h2>
+            <p>
+                悪の科学者「ブラック星博士」が世界中の時計を狂わせる作戦を開始！<br>
+                明石海峡大橋・魚の棚商店街を駆け抜け、天文科学館が変形した巨大ロボを打ち倒せ！
+            </p>
+            <div class="controls-guide">
+                <div><span class="badge">← → / A D</span> 移動</div>
+                <div><span class="badge">↑ / W / Space</span> ジャンプ</div>
+                <div><span class="badge">Z / Enter</span> 攻撃（レッド:大斬撃＋衝撃波＆弾消し / ブルー:高速星弾）</div>
+                <div><span class="badge">X / Shift</span> ヒーロー交代（レッド⇔ブルー）</div>
+                <div><span class="badge">C</span> 135度タイムストップ（敵をスロー化）</div>
+                <div><span class="badge">名物回収</span> 明石ダコ・のり・くぎ煮で回復＆スコアUP</div>
+            </div>
+            <button class="btn-action" onclick="startGame()">出動！シゴセンジャー！</button>
+        </div>
+
+        <!-- ゲームオーバー / クリア画面オーバーレイ -->
+        <div id="result-screen" class="overlay hidden">
+            <h2 id="result-title">MISSION COMPLETE!</h2>
+            <p id="result-desc">明石の平和と日本標準時は守られた！</p>
+            <div id="result-stats" style="margin-bottom: 20px; font-size: 1.1rem; color: #38bdf8;"></div>
+            <button class="btn-action" onclick="startGame()">もう一度プレイする</button>
+        </div>
+    </div>
+
+    <!-- 画面下部コントロールボタン -->
+    <div id="control-bar">
+        <div class="pad-group">
+            <button class="game-btn btn-move" id="btn-left">◀<span class="btn-sub">左</span></button>
+            <button class="game-btn btn-move" id="btn-right">▶<span class="btn-sub">右</span></button>
+        </div>
+        <div class="pad-group">
+            <button class="game-btn btn-switch" id="btn-switch">🔄 交代<span class="btn-sub">[X]</span></button>
+            <button class="game-btn btn-time" id="btn-time">⏱️ 135°停止<span class="btn-sub">[C]</span></button>
+            <button class="game-btn btn-attack" id="btn-attack">⚔️ 攻撃<span class="btn-sub">[Z]</span></button>
+            <button class="game-btn btn-jump" id="btn-jump">⬆️ ジャンプ<span class="btn-sub">[Space]</span></button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * 軌道星隊シゴセンジャー 〜明石時間防衛大作戦〜
+ * シングルファイル完結型 2D横スクロールアクションエンジン
+ * ============================================================================
+ */
+
+// キャンバスとコンテキストの取得
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const container = document.getElementById('canvas-container');
+
+// 論理解像度（16:9固定で計算し、描画時にレスポンシブスケーリング）
+const GAME_W = 960;
+const GAME_H = 540;
+const GROUND_Y = 460;
+
+// オーディオコンテキスト（効果音生成用 Web Audio API）
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+// シンプルなシンセサイザー効果音
+function playSound(type) {
+    if (!audioCtx) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'jump') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(280, now);
+            osc.frequency.exponentialRampToValueAtTime(580, now + 0.15);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'sword') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(450, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        } else if (type === 'star') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.exponentialRampToValueAtTime(1320, now + 0.1);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'hit') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(160, now);
+            osc.frequency.exponentialRampToValueAtTime(55, now + 0.15);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'timestop') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(220, now + 0.45);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+            osc.start(now);
+            osc.stop(now + 0.45);
+        } else if (type === 'item') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now); // C5
+            osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+            osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+            osc.start(now);
+            osc.stop(now + 0.28);
+        } else if (type === 'switch') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(350, now);
+            osc.frequency.linearRampToValueAtTime(700, now + 0.12);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        }
+    } catch (e) {
+        // オーディオエラー無視
+    }
+}
+
+// レスポンシブキャンバスリサイズ処理
+function resizeCanvas() {
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(canvas.width / GAME_W, 0, 0, canvas.height / GAME_H, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+
+// 入力管理
+const keys = {
+    left: false,
+    right: false,
+    up: false,
+    attack: false
+};
+
+// ゲーム状態管理
+const STATE = {
+    TITLE: 'TITLE',
+    PLAYING: 'PLAYING',
+    DIALOGUE: 'DIALOGUE',
+    BOSS: 'BOSS',
+    GAMEOVER: 'GAMEOVER',
+    CLEAR: 'CLEAR'
+};
+
+let currentState = STATE.TITLE;
+let cameraX = 0;
+let score = 0;
+let startTime = 0;
+let elapsedSeconds = 0;
+let screenShake = 0;
+let inkBlindTimer = 0; // タコの墨による視界妨害タイマー
+
+// 135度タイムストップ管理
+let timeGauge = 100; // 最大100
+let isTimeStopped = false;
+let timeStopTimer = 0;
+
+// プレイヤー（シゴセンジャー）データ
+const player = {
+    x: 100,
+    y: GROUND_Y - 64,
+    w: 40,
+    h: 64,
+    vx: 0,
+    vy: 0,
+    facing: 1, // 1:右, -1:左
+    onGround: false,
+    hero: 'RED', // 'RED' または 'BLUE'
+    hp: 100,
+    maxHp: 100,
+    invulnTimer: 0,
+    attackCooldown: 0,
+    swordSlashTimer: 0,
+    animFrame: 0
+};
+
+// ゲーム内エンティティ配列
+let platforms = [];
+let enemies = [];
+let projectiles = [];
+let enemyProjectiles = [];
+let items = [];
+let particles = [];
+let shockwaves = []; // 3D衝撃波リングエフェクト
+let afterimages = []; // プレイヤーの立体残像
+let floatingTexts = [];
+let boss = null;
+let dialogueQueue = [];
+
+// ステージ全長（ボスエリア開始地点）
+const BOSS_TRIGGER_X = 3600;
+
+/**
+ * ============================================================================
+ * ステージデータ初期化
+ * ============================================================================
+ */
+function initStage() {
+    cameraX = 0;
+    score = 0;
+    startTime = performance.now();
+    elapsedSeconds = 0;
+    screenShake = 0;
+    inkBlindTimer = 0;
+
+    timeGauge = 100;
+    isTimeStopped = false;
+    timeStopTimer = 0;
+
+    player.x = 120;
+    player.y = GROUND_Y - 64;
+    player.vx = 0;
+    player.vy = 0;
+    player.facing = 1;
+    player.onGround = false;
+    player.hero = 'RED';
+    player.hp = 100;
+    player.invulnTimer = 0;
+    player.attackCooldown = 0;
+    player.swordSlashTimer = 0;
+
+    projectiles = [];
+    enemyProjectiles = [];
+    particles = [];
+    shockwaves = [];
+    afterimages = [];
+    floatingTexts = [];
+    boss = null;
+
+    // 浮遊足場（魚の棚商店街のアーケード屋根や時計歯車など）
+    platforms = [
+        { x: 350, y: 350, w: 140, h: 20, label: '明石大橋足場' },
+        { x: 580, y: 280, w: 140, h: 20, label: '明石大橋足場' },
+        { x: 1150, y: 350, w: 160, h: 20, label: '魚の棚アーケード' },
+        { x: 1400, y: 270, w: 160, h: 20, label: '魚の棚アーケード' },
+        { x: 1680, y: 340, w: 140, h: 20, label: '玉子焼屋台' },
+        { x: 2250, y: 340, w: 150, h: 20, label: '天文科学館足場' },
+        { x: 2500, y: 260, w: 150, h: 20, label: '子午線ゲート' },
+        { x: 2800, y: 330, w: 180, h: 20, label: '時計塔テラス' },
+        // ボス戦用足場
+        { x: BOSS_TRIGGER_X + 120, y: 340, w: 150, h: 20, label: '子午線プレート' },
+        { x: BOSS_TRIGGER_X + 660, y: 340, w: 150, h: 20, label: '子午線プレート' }
+    ];
+
+    // 敵キャラクター配置
+    enemies = [
+        // エリア1: 大蔵海岸・明石海峡大橋付近（タコ足兵・ブラック兵）
+        { type: 'OCTO', x: 520, y: GROUND_Y - 52, w: 48, h: 52, hp: 30, maxHp: 30, vx: -1.5, minX: 400, maxX: 720, timer: 0 },
+        { type: 'BLACK_SOLDIER', x: 850, y: GROUND_Y - 56, w: 40, h: 56, hp: 20, maxHp: 20, vx: -2.2, minX: 750, maxX: 1050, timer: 0 },
+        { type: 'OCTO', x: 1020, y: GROUND_Y - 52, w: 48, h: 52, hp: 30, maxHp: 30, vx: 1.5, minX: 900, maxX: 1180, timer: 40 },
+
+        // エリア2: 魚の棚商店街（明石焼きモンスター・鯛ミサイル）
+        { type: 'AKASHIYAKI', x: 1320, y: GROUND_Y - 54, w: 54, h: 54, hp: 45, maxHp: 45, vx: -1.2, minX: 1200, maxX: 1550, enraged: false, timer: 0 },
+        { type: 'TAI_MISSILE', x: 1620, y: 230, w: 56, h: 32, hp: 15, maxHp: 15, vx: -4.2, minX: 1100, maxX: 1800, timer: 0 },
+        { type: 'AKASHIYAKI', x: 1880, y: GROUND_Y - 54, w: 54, h: 54, hp: 45, maxHp: 45, vx: -1.4, minX: 1750, maxX: 2100, enraged: false, timer: 20 },
+        { type: 'TAI_MISSILE', x: 2050, y: 310, w: 56, h: 32, hp: 15, maxHp: 15, vx: -4.5, minX: 1500, maxX: 2200, timer: 0 },
+
+        // エリア3: 明石公園〜天文科学館前（混成部隊）
+        { type: 'BLACK_SOLDIER', x: 2380, y: GROUND_Y - 56, w: 40, h: 56, hp: 25, maxHp: 25, vx: -2.8, minX: 2200, maxX: 2600, timer: 0 },
+        { type: 'AKASHIYAKI', x: 2680, y: GROUND_Y - 54, w: 54, h: 54, hp: 45, maxHp: 45, vx: 1.5, minX: 2550, maxX: 2950, enraged: false, timer: 0 },
+        { type: 'OCTO', x: 3050, y: GROUND_Y - 52, w: 48, h: 52, hp: 35, maxHp: 35, vx: -1.8, minX: 2900, maxX: 3300, timer: 0 },
+        { type: 'TAI_MISSILE', x: 3350, y: 250, w: 56, h: 32, hp: 15, maxHp: 15, vx: -5.0, minX: 2700, maxX: 3500, timer: 0 }
+    ];
+
+    // 明石名物コレクション＆回復アイテム
+    items = [
+        { type: 'TAKO', x: 630, y: 235, name: '明石ダコ', heal: 25, points: 500, collected: false },
+        { type: 'NORI', x: 1460, y: 225, name: '明石のり', heal: 25, points: 500, collected: false },
+        { type: 'AKASHIYAKI_ITEM', x: 2000, y: GROUND_Y - 40, name: '極上玉子焼', heal: 40, points: 800, collected: false },
+        { type: 'KUGINI', x: 2560, y: 215, name: 'いかなごのくぎ煮', heal: 30, points: 600, collected: false },
+        { type: 'CLOCK_CELL', x: 3250, y: GROUND_Y - 40, name: '子午線エネルギー', heal: 50, points: 1000, collected: false }
+    ];
+}
+
+/**
+ * ============================================================================
+ * ゲーム開始・アクション操作
+ * ============================================================================
+ */
+function startGame() {
+    initAudio();
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.add('hidden');
+    document.getElementById('dialogue-box').classList.add('hidden');
+    initStage();
+    currentState = STATE.PLAYING;
+}
+
+// ジャンプ操作（ブルーはジャンプ力が少し高い）
+function triggerJump() {
+    if (currentState !== STATE.PLAYING && currentState !== STATE.BOSS) return;
+    if (player.onGround) {
+        player.vy = player.hero === 'BLUE' ? -14.2 : -13.0;
+        player.onGround = false;
+        playSound('jump');
+        spawnParticles(player.x + player.w / 2, player.y + player.h, '#e2e8f0', 6);
+    }
+}
+
+// ヒーロー交代（レッド ⇔ ブルー）
+function switchHero() {
+    if (currentState !== STATE.PLAYING && currentState !== STATE.BOSS) return;
+    player.hero = player.hero === 'RED' ? 'BLUE' : 'RED';
+    playSound('switch');
+    const c = player.hero === 'RED' ? '#ef4444' : '#38bdf8';
+    spawnParticles(player.x + player.w / 2, player.y + player.h / 2, c, 16);
+    spawnShockwave(player.x + player.w / 2, player.y + player.h / 2, c);
+    addFloatingText(player.x, player.y - 12, player.hero === 'RED' ? 'レッド交代！' : 'ブルー交代！', c);
+}
+
+// 固有スキル：135度タイムストップ（敵や弾をスロー化）
+function triggerTimeStop() {
+    if (currentState !== STATE.PLAYING && currentState !== STATE.BOSS) return;
+    if (!isTimeStopped && timeGauge >= 40) {
+        isTimeStopped = true;
+        timeStopTimer = 240; // 約4秒間
+        playSound('timestop');
+        spawnShockwave(player.x + player.w / 2, player.y + player.h / 2, '#facc15');
+        addFloatingText(player.x, player.y - 20, '★ 135° TIME STOP! ★', '#fde047');
+    }
+}
+
+// 攻撃（レッド：大範囲・弾消し付き子午線ブレード＆貫通衝撃波 / ブルー：遠距離スターショット）
+function triggerAttack() {
+    if (currentState !== STATE.PLAYING && currentState !== STATE.BOSS) return;
+    if (player.attackCooldown > 0) return;
+
+    if (player.hero === 'RED') {
+        // レッド：超広範囲の近接斬撃 ＋ 前方へ飛ぶ貫通火炎衝撃波 ＋ 敵弾切り裂き消去！
+        player.attackCooldown = 16;
+        player.swordSlashTimer = 15;
+        playSound('sword');
+
+        // 斬撃時に軽い踏み込み（ダッシュ感）
+        player.vx = player.facing * 7.5;
+        screenShake = 5;
+
+        // 従来の2倍以上の超ワイド斬撃判定（上下にも広く、対空・対地どちらもカバー）
+        const slashBox = {
+            x: player.facing === 1 ? player.x - 15 : player.x + player.w - 145,
+            y: player.y - 35,
+            w: 160,
+            h: player.h + 55
+        };
+
+        // 近接直撃ダメージ（大威力35）
+        checkMeleeHit(slashBox, 35);
+
+        // 3D斬撃リングエフェクト発生
+        spawnShockwave(
+            player.facing === 1 ? player.x + player.w + 35 : player.x - 35,
+            player.y + 28,
+            '#fbbf24'
+        );
+
+        // さらに前方に巨大な「子午線フレイムウェイブ（貫通＆弾消し衝撃波）」を飛ばす！
+        projectiles.push({
+            type: 'RED_WAVE',
+            x: player.facing === 1 ? player.x + player.w - 5 : player.x - 55,
+            y: player.y - 18,
+            w: 60,
+            h: 92,
+            vx: player.facing * 12.5,
+            vy: 0,
+            facing: player.facing,
+            damage: 22,
+            pierce: true,
+            hitIds: [],
+            life: 28,
+            rotation: 0
+        });
+    } else {
+        // ブルー：連射可能な星型手裏剣（スターショット）
+        player.attackCooldown = 13;
+        playSound('star');
+        projectiles.push({
+            type: 'BLUE_STAR',
+            x: player.facing === 1 ? player.x + player.w : player.x - 18,
+            y: player.y + 22,
+            w: 18,
+            h: 18,
+            vx: player.facing * 12,
+            vy: 0,
+            damage: 14,
+            pierce: false,
+            life: 90,
+            rotation: 0
+        });
+    }
+}
+
+// 近接斬撃のヒット判定（敵へのダメージ＋敵の弾幕・ダジャレ文字を切り裂いて消去！）
+function checkMeleeHit(box, damage) {
+    // ザコ敵
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        if (rectIntersect(box, e)) {
+            damageEnemy(e, i, damage);
+        }
+    }
+    // ボス
+    if (boss && rectIntersect(box, boss)) {
+        damageBoss(damage);
+    }
+    // 敵の弾幕やダジャレ攻撃を一刀両断して無効化！
+    for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+        const ep = enemyProjectiles[i];
+        if (rectIntersect(box, ep)) {
+            spawnParticles(ep.x + ep.w / 2, ep.y + ep.h / 2, '#fde047', 12);
+            addFloatingText(ep.x, ep.y - 8, '斬撃消去！', '#fef08a');
+            score += 50;
+            timeGauge = Math.min(100, timeGauge + 4);
+            enemyProjectiles.splice(i, 1);
+        }
+    }
+}
+
+/**
+ * ============================================================================
+ * ボス戦イベント＆会話デモ
+ * ============================================================================
+ */
+function startBossEvent() {
+    currentState = STATE.DIALOGUE;
+    cameraX = BOSS_TRIGGER_X;
+    player.vx = 0;
+
+    // ボス生成：ブラック星博士搭乗「超時空要塞ロボ・テンモンカイザー」
+    boss = {
+        x: BOSS_TRIGGER_X + 680,
+        y: GROUND_Y - 210,
+        w: 150,
+        h: 210,
+        hp: 400,
+        maxHp: 400,
+        phase: 1, // 1:時計塔モード, 2:プラネタリウムコアモード
+        vx: 0,
+        vy: 0,
+        attackTimer: 60,
+        clockAngle: 0,
+        invulnFlash: 0
+    };
+
+    dialogueQueue = [
+        { speaker: 'ブラック星博士', avatar: '😈', text: 'フハハハ！よくここまで来たな、軌道星隊シゴセンジャー！' },
+        { speaker: 'シゴセンジャー・レッド', avatar: '🦸‍♂️', text: 'そこまでだブラック星博士！明石の標準時は1秒たりとも狂わせない！' },
+        { speaker: 'ブラック星博士', avatar: '😈', text: '甘いぞ！明石市立天文科学館を改造した「テンモン・カイザー」で、世界中の時計を月曜日の朝7時に固定してやる！' },
+        { speaker: 'シゴセンジャー・ブルー', avatar: '🦸', text: 'なんてセコくて恐ろしい作戦なんだ…！行くぞレッド、135度の誇りにかけて迎え撃つ！' }
+    ];
+    showNextDialogue();
+}
+
+function showNextDialogue() {
+    if (dialogueQueue.length === 0) {
+        document.getElementById('dialogue-box').classList.add('hidden');
+        currentState = STATE.BOSS;
+        return;
+    }
+    const d = dialogueQueue.shift();
+    document.getElementById('dialogue-box').classList.remove('hidden');
+    document.getElementById('dialogue-speaker').textContent = d.speaker;
+    document.getElementById('dialogue-avatar').textContent = d.avatar;
+    document.getElementById('dialogue-text').textContent = d.text;
+}
+
+function advanceDialogue() {
+    if (currentState === STATE.DIALOGUE) {
+        playSound('switch');
+        showNextDialogue();
+    }
+}
+
+/**
+ * ============================================================================
+ * メイン更新ループ（物理演算・AI・衝突判定）
+ * ============================================================================
+ */
+function update() {
+    if (currentState !== STATE.PLAYING && currentState !== STATE.BOSS) return;
+
+    elapsedSeconds = Math.floor((performance.now() - startTime) / 1000);
+
+    // 画面シェイク減衰
+    if (screenShake > 0) screenShake--;
+    if (inkBlindTimer > 0) inkBlindTimer--;
+
+    // 135度タイムストップ処理
+    if (isTimeStopped) {
+        timeStopTimer--;
+        timeGauge = Math.max(0, timeGauge - 0.35);
+        if (timeStopTimer <= 0 || timeGauge <= 0) {
+            isTimeStopped = false;
+        }
+    } else {
+        // 時間経過で子午線ゲージが少しずつ回復
+        timeGauge = Math.min(100, timeGauge + 0.08);
+    }
+
+    // 敵のタイムスケール（タイムストップ中は0.15倍速のスローモーション）
+    const enemyTimeScale = isTimeStopped ? 0.15 : 1.0;
+
+    // プレイヤー移動計算（ブルーはスピードが速い）
+    const moveSpeed = player.hero === 'BLUE' ? 6.2 : 4.8;
+    if (keys.left) {
+        player.vx = -moveSpeed;
+        player.facing = -1;
+        player.animFrame += 0.2;
+    } else if (keys.right) {
+        player.vx = moveSpeed;
+        player.facing = 1;
+        player.animFrame += 0.2;
+    } else {
+        player.vx = 0;
+        player.animFrame = 0;
+    }
+
+    // 重力適用
+    player.vy += 0.65;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    // クールダウン更新
+    if (player.invulnTimer > 0) player.invulnTimer--;
+    if (player.attackCooldown > 0) player.attackCooldown--;
+    if (player.swordSlashTimer > 0) player.swordSlashTimer--;
+
+    // 移動中や斬撃中の3D立体残像（アフターイメージ）生成
+    if ((Math.abs(player.vx) > 3 || player.swordSlashTimer > 0 || isTimeStopped) && Math.floor(performance.now() / 30) % 2 === 0) {
+        afterimages.push({
+            x: player.x,
+            y: player.y,
+            facing: player.facing,
+            hero: player.hero,
+            alpha: 0.45
+        });
+    }
+    for (let i = afterimages.length - 1; i >= 0; i--) {
+        afterimages[i].alpha -= 0.045;
+        if (afterimages[i].alpha <= 0) afterimages.splice(i, 1);
+    }
+
+    // 3D衝撃波リング更新
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.r += sw.speed;
+        sw.alpha -= 0.05;
+        if (sw.alpha <= 0) shockwaves.splice(i, 1);
+    }
+
+    // 地面との当たり判定
+    player.onGround = false;
+    if (player.y + player.h >= GROUND_Y) {
+        player.y = GROUND_Y - player.h;
+        player.vy = 0;
+        player.onGround = true;
+    }
+
+    // 浮遊足場との当たり判定（上から乗った時のみ）
+    for (const plat of platforms) {
+        if (player.vy >= 0 &&
+            player.x + player.w - 8 > plat.x &&
+            player.x + 8 < plat.x + plat.w &&
+            player.y + player.h >= plat.y &&
+            player.y + player.h - player.vy <= plat.y + 12) {
+            player.y = plat.y - player.h;
+            player.vy = 0;
+            player.onGround = true;
+        }
+    }
+
+    // 移動範囲制限＆カメラ追従
+    if (currentState === STATE.PLAYING) {
+        if (player.x < 10) player.x = 10;
+        cameraX = Math.max(0, Math.min(player.x - 280, BOSS_TRIGGER_X));
+
+        // ボスエリア到達チェック
+        if (player.x >= BOSS_TRIGGER_X + 60) {
+            startBossEvent();
+            return;
+        }
+    } else if (currentState === STATE.BOSS) {
+        // ボス戦中は画面内に閉じ込める
+        if (player.x < BOSS_TRIGGER_X + 10) player.x = BOSS_TRIGGER_X + 10;
+        if (player.x + player.w > BOSS_TRIGGER_X + GAME_W - 10) player.x = BOSS_TRIGGER_X + GAME_W - 10 - player.w;
+    }
+
+    // プレイヤーの弾（ブルーのスターショット ＆ レッドの子午線フレイムウェイブ）更新
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.x += p.vx;
+        p.rotation += 0.3;
+        if (p.life !== undefined) {
+            p.life--;
+            if (p.life <= 0) {
+                projectiles.splice(i, 1);
+                continue;
+            }
+        }
+
+        // 画面外消去
+        if (p.x < cameraX - 80 || p.x > cameraX + GAME_W + 80) {
+            projectiles.splice(i, 1);
+            continue;
+        }
+
+        // レッドの衝撃波は敵の弾幕もかき消す！
+        if (p.type === 'RED_WAVE') {
+            for (let k = enemyProjectiles.length - 1; k >= 0; k--) {
+                if (rectIntersect(p, enemyProjectiles[k])) {
+                    spawnParticles(enemyProjectiles[k].x, enemyProjectiles[k].y, '#fbbf24', 8);
+                    enemyProjectiles.splice(k, 1);
+                }
+            }
+        }
+
+        let hit = false;
+        // ザコ敵との衝突
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            const target = enemies[j];
+            if (rectIntersect(p, target)) {
+                if (p.pierce) {
+                    if (!p.hitIds.includes(target)) {
+                        p.hitIds.push(target);
+                        damageEnemy(target, j, p.damage);
+                    }
+                } else {
+                    damageEnemy(target, j, p.damage);
+                    hit = true;
+                    break;
+                }
+            }
+        }
+        // ボスとの衝突
+        if (!hit && boss && rectIntersect(p, boss)) {
+            if (p.pierce) {
+                if (!p.hitIds.includes('BOSS')) {
+                    p.hitIds.push('BOSS');
+                    damageBoss(p.damage);
+                }
+            } else {
+                damageBoss(p.damage);
+                hit = true;
+            }
+        }
+
+        if (hit && !p.pierce) {
+            projectiles.splice(i, 1);
+        }
+    }
+
+    // ザコ敵の更新
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        // カメラ付近の敵のみアクティブ化
+        if (Math.abs(e.x - player.x) > 950) continue;
+
+        e.timer += enemyTimeScale;
+
+        if (e.type === 'TAI_MISSILE') {
+            // 鯛ミサイル：直進して画面端でループ
+            e.x += e.vx * enemyTimeScale;
+            if (e.x < e.minX) e.x = e.maxX;
+        } else {
+            // 巡回移動
+            const speedMult = (e.type === 'AKASHIYAKI' && e.enraged) ? 1.8 : 1.0;
+            e.x += e.vx * speedMult * enemyTimeScale;
+            if (e.x <= e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); }
+            if (e.x >= e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
+
+            // タコ足兵の墨吐き攻撃
+            if (e.type === 'OCTO' && Math.floor(e.timer) % 150 === 0 && e.timer > 10) {
+                const dir = player.x < e.x ? -1 : 1;
+                enemyProjectiles.push({
+                    type: 'INK',
+                    x: e.x + e.w / 2,
+                    y: e.y + 20,
+                    w: 18,
+                    h: 18,
+                    vx: dir * 4.5,
+                    vy: -2.5,
+                    gravity: 0.12
+                });
+            }
+        }
+
+        // プレイヤーとの接触ダメージ
+        if (rectIntersect(player, e)) {
+            hurtPlayer(12);
+        }
+    }
+
+    // ボス（テンモン・カイザー＆ブラック星博士）のAI更新
+    if (boss && currentState === STATE.BOSS) {
+        if (boss.invulnFlash > 0) boss.invulnFlash--;
+        boss.clockAngle += 0.04 * enemyTimeScale;
+        boss.attackTimer -= enemyTimeScale;
+
+        // HP半分以下で第2形態（プラネタリウム・コアモード）へ移行
+        if (boss.hp <= boss.maxHp / 2 && boss.phase === 1) {
+            boss.phase = 2;
+            screenShake = 20;
+            playSound('timestop');
+            addFloatingText(boss.x, boss.y - 20, '第2形態：プラネタリウム・コア開放！', '#f472b6');
+            spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#c084fc', 40);
+        }
+
+        // ボスの攻撃パターン
+        if (boss.attackTimer <= 0) {
+            const pattern = Math.floor(Math.random() * 3);
+            if (pattern === 0) {
+                // ブラック星博士の「寒いダジャレ文字弾幕」
+                const dajareList = ['「時計が止まって、どけい！」', '「明石のタコは、たこうつく！」', '「星が降るのに、ほし〜い！」', '「子午線で、しごとするせん！」'];
+                const text = dajareList[Math.floor(Math.random() * dajareList.length)];
+                addFloatingText(boss.x - 40, boss.y - 30, '博士：' + text, '#e879f9');
+                enemyProjectiles.push({
+                    type: 'DAJARE',
+                    label: text,
+                    x: boss.x - 20,
+                    y: GROUND_Y - 45 - Math.random() * 90,
+                    w: 150,
+                    h: 34,
+                    vx: boss.phase === 2 ? -5.8 : -4.2,
+                    vy: 0,
+                    gravity: 0
+                });
+                boss.attackTimer = boss.phase === 2 ? 75 : 100;
+            } else if (pattern === 1) {
+                // 大時計の針レーザー／エネルギー弾（3方向）
+                for (let a = -1; a <= 1; a++) {
+                    enemyProjectiles.push({
+                        type: 'STAR_BEAM',
+                        x: boss.x + 20,
+                        y: boss.y + 90,
+                        w: 22,
+                        h: 22,
+                        vx: -5.2,
+                        vy: a * 2.2,
+                        gravity: 0
+                    });
+                }
+                boss.attackTimer = boss.phase === 2 ? 70 : 95;
+            } else {
+                // プラネタリウム流星群（上から降ってくる）
+                const count = boss.phase === 2 ? 4 : 2;
+                for (let k = 0; k < count; k++) {
+                    enemyProjectiles.push({
+                        type: 'METEOR',
+                        x: BOSS_TRIGGER_X + 80 + Math.random() * 650,
+                        y: -30 - k * 40,
+                        w: 26,
+                        h: 26,
+                        vx: -1.5,
+                        vy: 5.5,
+                        gravity: 0.05
+                    });
+                }
+                boss.attackTimer = 85;
+            }
+        }
+
+        // ボス本体との接触判定
+        if (rectIntersect(player, boss)) {
+            hurtPlayer(15);
+        }
+    }
+
+    // 敵の弾・ダジャレ弾幕の更新
+    for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+        const ep = enemyProjectiles[i];
+        ep.x += ep.vx * enemyTimeScale;
+        ep.y += ep.vy * enemyTimeScale;
+        if (ep.gravity) ep.vy += ep.gravity * enemyTimeScale;
+
+        // 画面外や地面到達で消去
+        if (ep.x < cameraX - 200 || ep.x > cameraX + GAME_W + 200 || ep.y > GROUND_Y) {
+            enemyProjectiles.splice(i, 1);
+            continue;
+        }
+
+        // プレイヤーとの衝突判定
+        if (rectIntersect(player, ep)) {
+            if (ep.type === 'INK') {
+                inkBlindTimer = 150; // タコの墨で視界が悪くなる
+                addFloatingText(player.x, player.y - 20, 'タコ墨で視界不良！', '#cbd5e1');
+            }
+            hurtPlayer(ep.type === 'DAJARE' ? 14 : 10);
+            enemyProjectiles.splice(i, 1);
+        }
+    }
+
+    // 明石名物アイテムの取得判定
+    for (const item of items) {
+        if (!item.collected && rectIntersect(player, { x: item.x, y: item.y, w: 36, h: 36 })) {
+            item.collected = true;
+            player.hp = Math.min(player.maxHp, player.hp + item.heal);
+            timeGauge = Math.min(100, timeGauge + 25);
+            score += item.points;
+            playSound('item');
+            spawnParticles(item.x + 18, item.y + 18, '#4ade80', 15);
+            addFloatingText(item.x, item.y - 10, `${item.name} GET! HP+${item.heal}`, '#86efac');
+        }
+    }
+
+    // パーティクル更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.vy += 0.2;
+        pt.life--;
+        if (pt.life <= 0) particles.splice(i, 1);
+    }
+
+    // フローティングテキスト更新
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 0.8;
+        ft.life--;
+        if (ft.life <= 0) floatingTexts.splice(i, 1);
+    }
+}
+
+// ザコ敵へのダメージ処理
+function damageEnemy(enemy, index, amount) {
+    enemy.hp -= amount;
+    playSound('hit');
+    spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#fb923c', 10);
+    addFloatingText(enemy.x, enemy.y - 10, `-${amount}`, '#fde047');
+
+    // 明石焼きモンスターの固有ギミック：ダメージを受けると熱々の出汁を撒き散らして怒り状態になる！
+    if (enemy.type === 'AKASHIYAKI' && enemy.hp > 0 && !enemy.enraged) {
+        enemy.enraged = true;
+        addFloatingText(enemy.x - 20, enemy.y - 28, '熱々出汁モード！', '#f97316');
+        // 左右に出汁の飛沫を飛ばす
+        enemyProjectiles.push(
+            { type: 'DASHI', x: enemy.x, y: enemy.y + 10, w: 16, h: 16, vx: -4.0, vy: -5.0, gravity: 0.25 },
+            { type: 'DASHI', x: enemy.x + enemy.w, y: enemy.y + 10, w: 16, h: 16, vx: 4.0, vy: -5.0, gravity: 0.25 }
+        );
+    }
+
+    if (enemy.hp <= 0) {
+        score += 300;
+        timeGauge = Math.min(100, timeGauge + 12);
+        spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#ef4444', 24);
+        spawnShockwave(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#f97316');
+        enemies.splice(index, 1);
+    }
+}
+
+// ボスへのダメージ処理
+function damageBoss(amount) {
+    if (!boss) return;
+    boss.hp -= amount;
+    boss.invulnFlash = 6;
+    playSound('hit');
+    spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#c084fc', 10);
+    addFloatingText(boss.x + 40, boss.y + 40, `-${amount}`, '#f0abfc');
+
+    if (boss.hp <= 0) {
+        boss.hp = 0;
+        score += 3000;
+        // ぴったり135秒ボーナスチェック
+        if (Math.abs(elapsedSeconds - 135) <= 5) {
+            score += 1350;
+        }
+        spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#fde047', 60);
+        playSound('item');
+        boss = null;
+        endGame(true);
+    }
+}
+
+// プレイヤー被弾処理
+function hurtPlayer(damage) {
+    if (player.invulnTimer > 0) return;
+    player.hp = Math.max(0, player.hp - damage);
+    player.invulnTimer = 55;
+    screenShake = 12;
+    playSound('hit');
+    spawnParticles(player.x + player.w / 2, player.y + player.h / 2, '#ef4444', 15);
+    addFloatingText(player.x, player.y - 10, `-${damage}`, '#f87171');
+
+    if (player.hp <= 0) {
+        endGame(false);
+    }
+}
+
+// ゲーム終了（クリア / ゲームオーバー）
+function endGame(isClear) {
+    currentState = isClear ? STATE.CLEAR : STATE.GAMEOVER;
+    const resScreen = document.getElementById('result-screen');
+    const resTitle = document.getElementById('result-title');
+    const resDesc = document.getElementById('result-desc');
+    const resStats = document.getElementById('result-stats');
+
+    resScreen.classList.remove('hidden');
+    if (isClear) {
+        resTitle.textContent = '★ MISSION COMPLETE! ★';
+        resTitle.style.color = '#fde047';
+        resDesc.textContent = 'ブラック星博士とテンモン・カイザーを撃破！日本の標準時と明石の平和は守られた！';
+    } else {
+        resTitle.textContent = 'GAME OVER...';
+        resTitle.style.color = '#f87171';
+        resDesc.textContent = 'やられてしまった…！もう一度立ち上がり、明石の時間を守り抜け！';
+    }
+
+    const timeBonusNote = Math.abs(elapsedSeconds - 135) <= 5 ? '（★135秒ニアピンボーナス獲得！）' : '';
+    resStats.innerHTML = `最終スコア: <strong>${score}</strong> pts ｜ クリアタイム: <strong>${elapsedSeconds}</strong> 秒 ${timeBonusNote}`;
+}
+
+/**
+ * ============================================================================
+ * 描画処理（リッチグラフィックス＆エフェクト）
+ * ============================================================================
+ */
+function draw() {
+    ctx.clearRect(0, 0, GAME_W, GAME_H);
+
+    ctx.save();
+    // 画面シェイク適用
+    if (screenShake > 0) {
+        const dx = (Math.random() - 0.5) * screenShake;
+        const dy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(dx, dy);
+    }
+
+    // 1. 多層パララックス背景描画
+    drawBackground();
+
+    // カメラ移動適用
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+
+    // 2. 地面＆東経135度子午線ライン描画
+    drawGround();
+
+    // 3. 浮遊足場描画（3D上面パース＋厚み立体表現）
+    for (const plat of platforms) {
+        ctx.save();
+        const depth = 12; // 3Dの奥行き厚み
+        // 足場のドロップシャドウ
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.roundRect(plat.x + 6, plat.y + 10, plat.w, plat.h, 8);
+        ctx.fill();
+
+        // 3D上面（奥行きパース面）
+        const topSurfaceGrad = ctx.createLinearGradient(0, plat.y - depth, 0, plat.y);
+        topSurfaceGrad.addColorStop(0, '#0ea5e9');
+        topSurfaceGrad.addColorStop(1, '#7dd3fc');
+        ctx.fillStyle = topSurfaceGrad;
+        ctx.beginPath();
+        ctx.moveTo(plat.x + 10, plat.y - depth);
+        ctx.lineTo(plat.x + plat.w - 10, plat.y - depth);
+        ctx.lineTo(plat.x + plat.w, plat.y);
+        ctx.lineTo(plat.x, plat.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#bae6fd';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 正面のメタリックな立体ブロック
+        const platGrad = ctx.createLinearGradient(plat.x, plat.y, plat.x, plat.y + plat.h);
+        platGrad.addColorStop(0, '#334155');
+        platGrad.addColorStop(0.5, '#1e293b');
+        platGrad.addColorStop(1, '#090d16');
+        ctx.fillStyle = platGrad;
+        ctx.beginPath();
+        ctx.roundRect(plat.x, plat.y, plat.w, plat.h, 6);
+        ctx.fill();
+
+        // 発光ネオンエッジ
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 下部の推進スラスター光（立体オーバル）
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(plat.x + 25, plat.y + plat.h + 3, 14, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(plat.x + plat.w - 25, plat.y + plat.h + 3, 14, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 4. 明石名物アイテム描画
+    for (const item of items) {
+        if (item.collected) continue;
+        drawItem(item);
+    }
+
+    // 5. ザコ敵描画
+    for (const e of enemies) {
+        drawEnemy(e);
+    }
+
+    // 6. ボス（天文科学館ロボ＆ブラック星博士）描画
+    if (boss) {
+        drawBoss(boss);
+    }
+
+    // 7. プレイヤーの残像＆プレイヤー（シゴセンジャー）描画
+    drawAfterimages();
+    drawPlayer();
+
+    // 8. プレイヤーのスターショット＆子午線フレイムウェイブ描画
+    for (const p of projectiles) {
+        ctx.save();
+        if (p.type === 'RED_WAVE') {
+            // レッドの巨大3D三日月火炎衝撃波
+            ctx.globalCompositeOperation = 'lighter';
+            const cx = p.facing === 1 ? p.x + 15 : p.x + p.w - 15;
+            const cy = p.y + p.h / 2;
+            const startAng = p.facing === 1 ? -Math.PI * 0.44 : Math.PI * 0.56;
+            const endAng = p.facing === 1 ? Math.PI * 0.44 : Math.PI * 1.44;
+
+            // 外側の紅蓮オーラ
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+            ctx.lineWidth = 22;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 44, startAng, endAng);
+            ctx.stroke();
+
+            // 中間のオレンジプラズマ
+            ctx.strokeStyle = '#fb923c';
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 44, startAng, endAng);
+            ctx.stroke();
+
+            // 中心の白熱コア
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 44, startAng, endAng);
+            ctx.stroke();
+        } else {
+            // ブルーのスターショット（軌跡の光の尾付き）
+            const tailGrad = ctx.createLinearGradient(p.x - p.vx * 3, p.y, p.x + p.w / 2, p.y);
+            tailGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+            tailGrad.addColorStop(1, 'rgba(125, 211, 252, 0.85)');
+            ctx.fillStyle = tailGrad;
+            ctx.beginPath();
+            ctx.moveTo(p.x + p.w / 2, p.y + 2);
+            ctx.lineTo(p.x + p.w / 2 - p.vx * 3.5, p.y + p.h / 2);
+            ctx.lineTo(p.x + p.w / 2, p.y + p.h - 2);
+            ctx.fill();
+
+            // 回転する発光スター
+            ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+            ctx.rotate(p.rotation);
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+            drawStarShape(0, 0, 5, 13, 6, '#38bdf8', '#ffffff');
+        }
+        ctx.restore();
+    }
+
+    // 9. 敵の弾・ダジャレ弾幕描画
+    for (const ep of enemyProjectiles) {
+        drawEnemyProjectile(ep);
+    }
+
+    // 10. 3D衝撃波リング＆パーティクル＆ダメージ数値描画（加算合成でキラキラ発光）
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const sw of shockwaves) {
+        ctx.strokeStyle = sw.color;
+        ctx.globalAlpha = Math.max(0, sw.alpha);
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.ellipse(sw.x, sw.y, sw.r * 0.65, sw.r, 0, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1.0;
+
+    for (const pt of particles) {
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.font = '900 17px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'center';
+    for (const ft of floatingTexts) {
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 4;
+        ctx.strokeText(ft.text, ft.x, ft.y);
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+    }
+
+    ctx.restore(); // カメラ移動解除
+
+    // 11. 135度タイムストップ中の画面エフェクト（3D回転ジャイロスコープ＋巨大魔法陣クロック）
+    if (isTimeStopped) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.12)';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        // 画面中央に3D傾斜回転する時空ジャイロリング
+        const cx = GAME_W / 2;
+        const cy = GAME_H / 2;
+        const rotT = performance.now() / 600;
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.35)';
+        ctx.lineWidth = 3;
+
+        for (let ring = 0; ring < 3; ring++) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(rotT * (ring % 2 === 0 ? 1 : -1) + ring);
+            ctx.scale(1, 0.45 + ring * 0.15); // 3Dパース楕円化
+            ctx.beginPath();
+            ctx.arc(0, 0, 140 + ring * 35, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 12個の目盛り
+        for (let m = 0; m < 12; m++) {
+            const ang = (m / 12) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(ang) * 155, cy + Math.sin(ang) * 155);
+            ctx.lineTo(cx + Math.cos(ang) * 180, cy + Math.sin(ang) * 180);
+            ctx.stroke();
+        }
+
+        // 外周の黄金フレーム
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, GAME_W - 8, GAME_H - 8);
+        ctx.restore();
+    }
+
+    // 12. タコ墨による視界妨害エフェクト
+    if (inkBlindTimer > 0) {
+        ctx.save();
+        const alpha = Math.min(0.85, inkBlindTimer / 60);
+        ctx.fillStyle = `rgba(15, 23, 42, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(240, 200, 150, 0, Math.PI * 2);
+        ctx.arc(540, 310, 180, 0, Math.PI * 2);
+        ctx.arc(760, 170, 140, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    ctx.restore(); // 画面シェイク解除
+
+    // 13. 画面上部HUD描画
+    drawHUD();
+}
+
+// 多層パララックス背景描画（空・太陽・明石海峡大橋・3Dビル群・魚の棚・天文科学館）
+function drawBackground() {
+    // 1. 空のグラデーション（ボス第2形態は宇宙空間へ変化）
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+    if (boss && boss.phase === 2) {
+        skyGrad.addColorStop(0, '#050514');
+        skyGrad.addColorStop(0.5, '#1e1b4b');
+        skyGrad.addColorStop(1, '#4c1d95');
+    } else {
+        skyGrad.addColorStop(0, '#0284c7');
+        skyGrad.addColorStop(0.6, '#38bdf8');
+        skyGrad.addColorStop(1, '#bae6fd');
+    }
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, GAME_W, GROUND_Y);
+
+    // 太陽・銀河の輝きと立体ゴッドレイ（光芒）
+    if (!(boss && boss.phase === 2)) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        // 斜めに差し込む3Dゴッドレイ（太陽光の柱）
+        const rayTime = performance.now() / 2000;
+        for (let r = 0; r < 5; r++) {
+            const rx = 780 - r * 140 + Math.sin(rayTime + r) * 25;
+            const rayGrad = ctx.createLinearGradient(780, 90, rx - 180, GROUND_Y);
+            rayGrad.addColorStop(0, 'rgba(254, 249, 195, 0.18)');
+            rayGrad.addColorStop(1, 'rgba(254, 249, 195, 0)');
+            ctx.fillStyle = rayGrad;
+            ctx.beginPath();
+            ctx.moveTo(780 - 20, 90);
+            ctx.lineTo(780 + 20, 90);
+            ctx.lineTo(rx - 90, GROUND_Y);
+            ctx.lineTo(rx - 220, GROUND_Y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        const sunGrad = ctx.createRadialGradient(780, 90, 10, 780, 90, 145);
+        sunGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        sunGrad.addColorStop(0.3, 'rgba(254, 240, 138, 0.55)');
+        sunGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        ctx.fillStyle = sunGrad;
+        ctx.beginPath();
+        ctx.arc(780, 90, 145, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 星空（ボス第2形態 or 天文科学館エリアで輝く）
+    if ((boss && boss.phase === 2) || cameraX > 2200) {
+        ctx.fillStyle = '#ffffff';
+        for (let s = 0; s < 55; s++) {
+            const sx = (s * 173 + cameraX * 0.05) % GAME_W;
+            const sy = (s * 97) % (GROUND_Y - 80);
+            const twinkle = 0.4 + Math.abs(Math.sin(performance.now() / 400 + s)) * 0.6;
+            ctx.globalAlpha = twinkle;
+            ctx.beginPath();
+            ctx.arc(sx, sy, (s % 2) + 1.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+    }
+
+    // 2. 遠景：淡路島の山並み＆瀬戸内海のきらめく波
+    const seaY = GROUND_Y - 68;
+    // 淡路島シルエット
+    ctx.fillStyle = (boss && boss.phase === 2) ? '#1e1b4b' : '#64748b';
+    ctx.beginPath();
+    ctx.moveTo(0, seaY);
+    ctx.lineTo(180, seaY - 35);
+    ctx.lineTo(420, seaY - 18);
+    ctx.lineTo(680, seaY - 42);
+    ctx.lineTo(960, seaY - 15);
+    ctx.lineTo(960, seaY);
+    ctx.fill();
+
+    // 瀬戸内海のグラデーション
+    const seaGrad = ctx.createLinearGradient(0, seaY, 0, GROUND_Y);
+    seaGrad.addColorStop(0, '#0284c7');
+    seaGrad.addColorStop(1, '#0c4a6e');
+    ctx.fillStyle = seaGrad;
+    ctx.fillRect(0, seaY, GAME_W, 68);
+
+    // 水面の光のきらめき
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    const waveShift = (performance.now() / 40) % 60;
+    for (let wx = -60; wx < GAME_W + 60; wx += 60) {
+        ctx.fillRect(wx + waveShift, seaY + 12, 28, 3);
+        ctx.fillRect(wx - waveShift + 20, seaY + 32, 36, 3);
+    }
+
+    // 3. 遠景：明石海峡大橋（3D奥行きのあるダブル主塔・立体トラス桁）
+    const bridgeOffset = -(cameraX * 0.25);
+    const tower1X = bridgeOffset + 240;
+    const tower2X = bridgeOffset + 700;
+    const deckY = seaY - 15;
+
+    ctx.save();
+    // 奥側（奥行きZ方向）のケーブルと主塔シルエット
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(bridgeOffset + 35, deckY - 6);
+    ctx.quadraticCurveTo(tower1X - 95, deckY - 10, tower1X + 14, 112);
+    ctx.quadraticCurveTo((tower1X + tower2X) / 2 + 14, deckY - 16, tower2X + 14, 112);
+    ctx.quadraticCurveTo(tower2X + 125, deckY - 10, bridgeOffset + 935, deckY - 6);
+    ctx.stroke();
+
+    // 垂直ハンガーロープ
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    for (let hx = bridgeOffset + 60; hx < bridgeOffset + 880; hx += 18) {
+        const dist1 = Math.abs(hx - tower1X);
+        const dist2 = Math.abs(hx - tower2X);
+        const minDist = Math.min(dist1, dist2);
+        const cableY = Math.min(deckY - 4, 120 + (minDist * minDist) * 0.0038);
+        ctx.beginPath();
+        ctx.moveTo(hx, cableY);
+        ctx.lineTo(hx, deckY);
+        ctx.stroke();
+    }
+
+    // 立体3D主塔2本（側面シャドウ＋X字3Dトラス）
+    [tower1X, tower2X].forEach(tx => {
+        // 奥側の柱（3D奥行き表現）
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(tx + 9, 112, 6, GROUND_Y - 112);
+
+        const tGrad = ctx.createLinearGradient(tx - 10, 0, tx + 10, 0);
+        tGrad.addColorStop(0, '#ffffff');
+        tGrad.addColorStop(1, '#94a3b8');
+        ctx.fillStyle = tGrad;
+        ctx.fillRect(tx - 9, 115, 7, GROUND_Y - 115);
+        ctx.fillRect(tx + 2, 115, 7, GROUND_Y - 115);
+        // 水平梁＆3D奥行きコネクタ
+        ctx.fillRect(tx - 10, 145, 24, 6);
+        ctx.fillRect(tx - 10, 215, 24, 6);
+        ctx.fillRect(tx - 10, 285, 24, 6);
+    });
+
+    // メインケーブル（放物線）
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(bridgeOffset + 20, deckY);
+    ctx.quadraticCurveTo(tower1X - 110, deckY - 5, tower1X, 120);
+    ctx.quadraticCurveTo((tower1X + tower2X) / 2, deckY - 10, tower2X, 120);
+    ctx.quadraticCurveTo(tower2X + 110, deckY - 5, bridgeOffset + 920, deckY);
+    ctx.stroke();
+
+    // 3D立体橋桁（上面道路＋側面トラス構造）
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(bridgeOffset + 20, deckY - 5, 920, 5);
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(bridgeOffset + 10, deckY, 920, 9);
+    ctx.restore();
+
+    // 3.5. 遠〜中景：明石駅周辺の3D立体ビル群（奥行き側面・窓の反射付き）
+    ctx.save();
+    const cityParallax = -(cameraX * 0.42);
+    for (let bIdx = 0; bIdx < 16; bIdx++) {
+        const bx = cityParallax + bIdx * 240 + 80;
+        if (bx < -120 || bx > GAME_W + 120) continue;
+        const bh = 85 + (bIdx * 37) % 95;
+        const bw = 54 + (bIdx * 19) % 28;
+        const by = GROUND_Y - bh;
+
+        // ビルの3D右側面（暗いシェード）
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.moveTo(bx + bw, by);
+        ctx.lineTo(bx + bw + 16, by - 10);
+        ctx.lineTo(bx + bw + 16, GROUND_Y);
+        ctx.lineTo(bx + bw, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+
+        // ビルの3D屋上（上面パース）
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + 16, by - 10);
+        ctx.lineTo(bx + bw + 16, by - 10);
+        ctx.lineTo(bx + bw, by);
+        ctx.closePath();
+        ctx.fill();
+
+        // ビル正面ボディ
+        const bGrad = ctx.createLinearGradient(bx, by, bx, GROUND_Y);
+        bGrad.addColorStop(0, '#475569');
+        bGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bGrad;
+        ctx.fillRect(bx, by, bw, bh);
+
+        // 窓ガラスのきらめき
+        ctx.fillStyle = (boss && boss.phase === 2) ? 'rgba(250, 204, 21, 0.55)' : 'rgba(186, 230, 253, 0.45)';
+        for (let wy = by + 12; wy < GROUND_Y - 18; wy += 18) {
+            for (let wx = bx + 8; wx < bx + bw - 10; wx += 14) {
+                ctx.fillRect(wx, wy, 7, 10);
+            }
+        }
+    }
+    ctx.restore();
+
+    // 4. 中景：魚の棚商店街アーケード看板＆提灯（3D立体ボックスパース）
+    const uontanaScreenX = 1150 - cameraX * 0.6;
+    if (uontanaScreenX > -500 && uontanaScreenX < GAME_W + 300) {
+        ctx.save();
+        // 3D奥行き側面（屋根の厚み）
+        ctx.fillStyle = '#7f1d1d';
+        ctx.beginPath();
+        ctx.moveTo(uontanaScreenX + 16, 113);
+        ctx.lineTo(uontanaScreenX + 396, 113);
+        ctx.lineTo(uontanaScreenX + 396, 181);
+        ctx.lineTo(uontanaScreenX + 380, 193);
+        ctx.lineTo(uontanaScreenX, 125);
+        ctx.closePath();
+        ctx.fill();
+
+        // アーチ型アーケード屋根正面
+        const arcGrad = ctx.createLinearGradient(0, 110, 0, 195);
+        arcGrad.addColorStop(0, '#ef4444');
+        arcGrad.addColorStop(1, '#991b1b');
+        ctx.fillStyle = arcGrad;
+        ctx.beginPath();
+        ctx.roundRect(uontanaScreenX, 125, 380, 68, 16);
+        ctx.fill();
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // ぶら下がる3D球体提灯（ハイライト付き）
+        for (let l = 0; l < 5; l++) {
+            const lx = uontanaScreenX + 45 + l * 72;
+            const lGrad = ctx.createRadialGradient(lx - 3, 202, 2, lx, 206, 14);
+            lGrad.addColorStop(0, '#fca5a5');
+            lGrad.addColorStop(0.5, '#ef4444');
+            lGrad.addColorStop(1, '#7f1d1d');
+            ctx.fillStyle = lGrad;
+            ctx.beginPath();
+            ctx.ellipse(lx, 206, 10, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(lx - 5, 191, 10, 3);
+            ctx.fillRect(lx - 5, 219, 10, 3);
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 22px "M PLUS Rounded 1c", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🐟 魚の棚（うおんたな）商店街 🐙', uontanaScreenX + 190, 167);
+        ctx.restore();
+    }
+
+    // 5. 中景：明石市立天文科学館の3D時計塔＆プラネタリウムドーム
+    const astroScreenX = 2350 - cameraX * 0.65;
+    if (astroScreenX > -350 && astroScreenX < GAME_W + 350) {
+        ctx.save();
+        // 3D時計塔の奥行き側面
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(astroScreenX + 80, 125);
+        ctx.lineTo(astroScreenX + 102, 115);
+        ctx.lineTo(astroScreenX + 102, GROUND_Y);
+        ctx.lineTo(astroScreenX + 80, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+
+        // 白亜の時計塔タワー正面
+        const towerGrad = ctx.createLinearGradient(astroScreenX, 0, astroScreenX + 80, 0);
+        towerGrad.addColorStop(0, '#ffffff');
+        towerGrad.addColorStop(1, '#cbd5e1');
+        ctx.fillStyle = towerGrad;
+        ctx.fillRect(astroScreenX, 125, 80, GROUND_Y - 125);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(astroScreenX, 125, 80, GROUND_Y - 125);
+
+        // 展望台デッキ（3D立体リム）
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(astroScreenX - 8, 225, 112, 12);
+
+        // 3D球体プラネタリウムドーム（緯度経度ワイヤーフレーム付き）
+        const domeGrad = ctx.createRadialGradient(astroScreenX + 120, GROUND_Y - 95, 10, astroScreenX + 135, GROUND_Y - 70, 80);
+        domeGrad.addColorStop(0, '#ffffff');
+        domeGrad.addColorStop(0.7, '#cbd5e1');
+        domeGrad.addColorStop(1, '#64748b');
+        ctx.fillStyle = domeGrad;
+        ctx.beginPath();
+        ctx.arc(astroScreenX + 135, GROUND_Y - 70, 75, Math.PI, 0);
+        ctx.fill();
+
+        // ドームの3D経度線
+        ctx.strokeStyle = 'rgba(71, 85, 105, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(astroScreenX + 135, GROUND_Y - 70, 35, 75, 0, Math.PI, 0);
+        ctx.stroke();
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(astroScreenX + 60, GROUND_Y - 70, 150, 70);
+
+        // 象徴的な大時計（3Dベゼル枠）
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(astroScreenX + 43, 175, 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(astroScreenX + 40, 175, 28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        // 時計の針
+        ctx.beginPath();
+        ctx.moveTo(astroScreenX + 40, 175);
+        ctx.lineTo(astroScreenX + 40, 154);
+        ctx.moveTo(astroScreenX + 40, 175);
+        ctx.lineTo(astroScreenX + 56, 175);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+// 地面と東経135度子午線ライン描画（3D一点透視パースグリッド床）
+function drawGround() {
+    ctx.save();
+    // 地面の深いグラデーション
+    const groundGrad = ctx.createLinearGradient(0, GROUND_Y, 0, GAME_H);
+    groundGrad.addColorStop(0, '#1e293b');
+    groundGrad.addColorStop(0.25, '#0f172a');
+    groundGrad.addColorStop(1, '#020617');
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(cameraX, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+
+    // 3D水平奥行きライン（手前に向かって間隔が広がる遠近法）
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+    ctx.lineWidth = 1.5;
+    const perspRows = [12, 26, 44, 65];
+    for (const dy of perspRows) {
+        ctx.beginPath();
+        ctx.moveTo(cameraX, GROUND_Y + dy);
+        ctx.lineTo(cameraX + GAME_W, GROUND_Y + dy);
+        ctx.stroke();
+    }
+
+    // 3D一点透視の放射状パースグリッド線（消失点に向かって収束）
+    const vanishX = cameraX + GAME_W * 0.5;
+    const vanishY = GROUND_Y - 120;
+    const tileStart = Math.floor(cameraX / 80) * 80 - 160;
+    for (let tx = tileStart; tx < cameraX + GAME_W + 240; tx += 80) {
+        const dx = tx - vanishX;
+        const bottomX = tx + dx * 0.45;
+        ctx.beginPath();
+        ctx.moveTo(tx, GROUND_Y + 8);
+        ctx.lineTo(bottomX, GAME_H);
+        ctx.stroke();
+    }
+
+    // 発光する標準時エネルギーライン
+    const lineGrad = ctx.createLinearGradient(0, GROUND_Y, 0, GROUND_Y + 10);
+    lineGrad.addColorStop(0, '#7dd3fc');
+    lineGrad.addColorStop(0.5, '#0284c7');
+    lineGrad.addColorStop(1, '#0369a1');
+    ctx.fillStyle = lineGrad;
+    ctx.fillRect(cameraX, GROUND_Y, GAME_W, 10);
+
+    // 135°E 子午線マーカー（3Dパースで手前に伸びる黄金レーザーライン）
+    ctx.font = '900 13px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'center';
+    const startMark = Math.floor(cameraX / 300) * 300;
+    for (let mx = startMark; mx < cameraX + GAME_W + 300; mx += 300) {
+        const dx = mx - vanishX;
+        const bottomMx = mx + dx * 0.45;
+
+        // 奥から手前に広がる3D子午線ビーム
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(mx - 4, GROUND_Y);
+        ctx.lineTo(mx + 4, GROUND_Y);
+        ctx.lineTo(bottomMx + 12, GAME_H);
+        ctx.lineTo(bottomMx - 12, GAME_H);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(mx - 3, GROUND_Y, 6, 22);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText('★ 135°E 日本標準時子午線 ★', (mx + bottomMx) / 2, GROUND_Y + 54);
+    }
+    ctx.restore();
+}
+
+// プレイヤーの3D立体残像（アフターイメージ）描画
+function drawAfterimages() {
+    for (const ai of afterimages) {
+        ctx.save();
+        ctx.globalAlpha = ai.alpha;
+        ctx.fillStyle = ai.hero === 'RED' ? '#ef4444' : '#38bdf8';
+        ctx.beginPath();
+        ctx.roundRect(ai.x + 6, ai.y + 22, 28, 38, 8);
+        ctx.arc(ai.x + 20, ai.y + 13, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// プレイヤー（シゴセンジャー・レッド / ブルー）描画（立体シェーディング＆ヒーローディテール）
+function drawPlayer() {
+    if (player.invulnTimer > 0 && Math.floor(player.invulnTimer / 4) % 2 === 0) return;
+
+    const px = player.x;
+    const py = player.y;
+    const isRed = player.hero === 'RED';
+    const colorLight = isRed ? '#f87171' : '#60a5fa';
+    const colorDark = isRed ? '#b91c1c' : '#1d4ed8';
+    const subColor = isRed ? '#fef08a' : '#bae6fd';
+
+    ctx.save();
+
+    // 足元の接地シャドウ
+    if (player.onGround) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(px + 20, py + player.h, 18, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 1. なびく純白のマフラー（2層構造で立体感）
+    const scarfDir = -player.facing;
+    const wave = Math.sin(player.animFrame * 2.2) * 6;
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.moveTo(px + 20, py + 25);
+    ctx.quadraticCurveTo(px + 20 + scarfDir * 18, py + 32, px + 20 + scarfDir * 34, py + 26 + wave);
+    ctx.lineTo(px + 20 + scarfDir * 30, py + 36 + wave);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(px + 20, py + 23);
+    ctx.quadraticCurveTo(px + 20 + scarfDir * 16, py + 18, px + 20 + scarfDir * 32, py + 18 + wave);
+    ctx.lineTo(px + 20 + scarfDir * 28, py + 28 + wave);
+    ctx.fill();
+
+    // 2. 脚（白いスーツ＋ヒーローカラーのブーツ）
+    const legSwing = Math.sin(player.animFrame) * 7;
+    // 奥の脚
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.roundRect(px + 10, py + 48, 8, 16 - legSwing * 0.4, 3);
+    ctx.fill();
+    ctx.fillStyle = colorDark;
+    ctx.fillRect(px + 10, py + 58 - legSwing * 0.4, 8, 6);
+
+    // 手前の脚
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(px + 22, py + 48, 8, 16 + legSwing * 0.4, 3);
+    ctx.fill();
+    ctx.fillStyle = colorLight;
+    ctx.fillRect(px + 22, py + 58 + legSwing * 0.4, 8, 6);
+
+    // 3. ボディ（立体スーツ＋ベルト＋胸アーマー）
+    const bodyGrad = ctx.createLinearGradient(px + 6, py + 22, px + 34, py + 50);
+    bodyGrad.addColorStop(0, colorLight);
+    bodyGrad.addColorStop(1, colorDark);
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.roundRect(px + 6, py + 22, 28, 28, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // チャンピオンベルト（金のバックル）
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(px + 6, py + 44, 28, 5);
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(px + 20, py + 46.5, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 胸の「135°時計エンブレム」
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(px + 20, py + 33, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 時計の針
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(px + 20, py + 33);
+    ctx.lineTo(px + 20, py + 27);
+    ctx.moveTo(px + 20, py + 33);
+    ctx.lineTo(px + 25, py + 33);
+    ctx.stroke();
+
+    // 4. ヘルメット頭部（光沢グラデーション＋スターバイザー）
+    const headGrad = ctx.createRadialGradient(px + 16, py + 8, 2, px + 20, py + 13, 16);
+    headGrad.addColorStop(0, colorLight);
+    headGrad.addColorStop(1, colorDark);
+    ctx.fillStyle = headGrad;
+    ctx.beginPath();
+    ctx.arc(px + 20, py + 13, 14.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // バイザー（ゴーグル＋反射ハイライト）
+    ctx.fillStyle = '#090d16';
+    ctx.beginPath();
+    const visorX = player.facing === 1 ? px + 14 : px + 5;
+    ctx.roundRect(visorX, py + 8, 21, 9, 4);
+    ctx.fill();
+    // バイザーの白い光沢線
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillRect(visorX + 3, py + 9.5, 12, 2);
+
+    // 額の立体スターマーク
+    drawStarShape(px + 20, py + 2, 5, 7.5, 3.2, '#facc15', '#ffffff');
+
+    // レッドの手に握られた3D発光ブレード「子午線カリバー」
+    if (isRed) {
+        ctx.save();
+        const handX = player.facing === 1 ? px + 30 : px + 10;
+        const handY = py + 34;
+        const swordAngle = player.swordSlashTimer > 0
+            ? (player.facing === 1 ? 0.35 : Math.PI - 0.35)
+            : (player.facing === 1 ? -0.55 : Math.PI + 0.55);
+        ctx.translate(handX, handY);
+        ctx.rotate(swordAngle);
+
+        // 黄金の鍔（つば）
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-4, -9, 7, 18);
+        // 輝くブレード刀身
+        const bladeGrad = ctx.createLinearGradient(0, 0, 44, 0);
+        bladeGrad.addColorStop(0, '#ffffff');
+        bladeGrad.addColorStop(0.5, '#fde047');
+        bladeGrad.addColorStop(1, '#ef4444');
+        ctx.fillStyle = bladeGrad;
+        ctx.beginPath();
+        ctx.moveTo(3, -5);
+        ctx.lineTo(42, 0);
+        ctx.lineTo(3, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // レッドの超広範囲・近接斬撃エフェクト（巨大な多重3Dプラズマアーク）
+    if (player.swordSlashTimer > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const arcCenterX = player.facing === 1 ? px + 34 : px + 6;
+        const startAng = player.facing === 1 ? -Math.PI * 0.55 : Math.PI * 0.45;
+        const endAng = player.facing === 1 ? Math.PI * 0.55 : Math.PI * 1.55;
+
+        // 外側の特大紅蓮オーラ（リーチ大幅拡大を視覚化）
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+        ctx.lineWidth = 26;
+        ctx.beginPath();
+        ctx.arc(arcCenterX, py + 28, 96, startAng, endAng);
+        ctx.stroke();
+
+        // 中間のフレイムリング
+        ctx.strokeStyle = 'rgba(251, 146, 60, 0.9)';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.arc(arcCenterX, py + 28, 92, startAng, endAng);
+        ctx.stroke();
+
+        // 内側の黄金の刃
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(arcCenterX, py + 28, 88, startAng, endAng);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+// ザコ敵描画（ディテール＆立体感強化）
+function drawEnemy(e) {
+    ctx.save();
+    // 接地シャドウ
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(e.x + e.w / 2, e.y + e.h, e.w * 0.45, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (e.type === 'OCTO') {
+        // タコ足兵（明石ダコモチーフ：ハチマキ付き）
+        const octoGrad = ctx.createRadialGradient(e.x + 18, e.y + 14, 4, e.x + e.w / 2, e.y + 22, 24);
+        octoGrad.addColorStop(0, '#f87171');
+        octoGrad.addColorStop(1, '#991b1b');
+        ctx.fillStyle = octoGrad;
+        ctx.beginPath();
+        ctx.arc(e.x + e.w / 2, e.y + 20, 21, Math.PI, 0);
+        ctx.lineTo(e.x + e.w - 3, e.y + 42);
+        ctx.lineTo(e.x + 3, e.y + 42);
+        ctx.fill();
+
+        // 気合の白いハチマキ
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(e.x + 4, e.y + 12, e.w - 8, 5);
+
+        // うねるタコ足
+        const wave = Math.sin(e.timer * 0.2) * 3;
+        ctx.fillStyle = '#b91c1c';
+        for (let t = 0; t < 4; t++) {
+            ctx.beginPath();
+            ctx.roundRect(e.x + 6 + t * 10, e.y + 40, 7, 12 + (t % 2 === 0 ? wave : -wave), 3);
+            ctx.fill();
+        }
+        // 目
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(e.x + 16, e.y + 24, 5.5, 0, Math.PI * 2);
+        ctx.arc(e.x + 32, e.y + 24, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(e.x + 15, e.y + 24, 2.5, 0, Math.PI * 2);
+        ctx.arc(e.x + 31, e.y + 24, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (e.type === 'AKASHIYAKI') {
+        // 明石焼き（玉子焼）モンスター（木のまな板＆焦げ目＆出汁オーラ）
+        ctx.fillStyle = '#92400e';
+        ctx.beginPath();
+        ctx.roundRect(e.x - 2, e.y + e.h - 11, e.w + 4, 11, 3);
+        ctx.fill();
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(e.x, e.y + e.h - 11, e.w, 3);
+
+        // ふわふわ玉子焼ボディ
+        const yakiGrad = ctx.createRadialGradient(e.x + 20, e.y + 18, 4, e.x + e.w / 2, e.y + 26, 25);
+        if (e.enraged) {
+            yakiGrad.addColorStop(0, '#fdba74');
+            yakiGrad.addColorStop(1, '#ea580c');
+        } else {
+            yakiGrad.addColorStop(0, '#fef08a');
+            yakiGrad.addColorStop(1, '#eab308');
+        }
+        ctx.fillStyle = yakiGrad;
+        ctx.beginPath();
+        ctx.arc(e.x + e.w / 2, e.y + 26, 23, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#a16207';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 怒り顔＆眉
+        ctx.fillStyle = '#7f1d1d';
+        ctx.beginPath();
+        ctx.arc(e.x + 19, e.y + 25, 3.5, 0, Math.PI * 2);
+        ctx.arc(e.x + 35, e.y + 25, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(e.x + 14, e.y + 18);
+        ctx.lineTo(e.x + 23, e.y + 21);
+        ctx.moveTo(e.x + 40, e.y + 18);
+        ctx.lineTo(e.x + 31, e.y + 21);
+        ctx.stroke();
+
+        // 出汁の湯気
+        if (e.enraged) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineWidth = 2.5;
+            const steam = Math.sin(e.timer * 0.25) * 4;
+            ctx.beginPath();
+            ctx.moveTo(e.x + 18, e.y);
+            ctx.quadraticCurveTo(e.x + 12 + steam, e.y - 8, e.x + 18, e.y - 16);
+            ctx.moveTo(e.x + 36, e.y);
+            ctx.quadraticCurveTo(e.x + 42 - steam, e.y - 8, e.x + 36, e.y - 16);
+            ctx.stroke();
+        }
+    } else if (e.type === 'TAI_MISSILE') {
+        // 鯛（タイ）ミサイル（ウロコ模様＋ジェット噴射炎）
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(e.x + 54, e.y + 12);
+        ctx.lineTo(e.x + 68 + Math.random() * 8, e.y + 16);
+        ctx.lineTo(e.x + 54, e.y + 20);
+        ctx.fill();
+
+        const taiGrad = ctx.createLinearGradient(e.x, e.y, e.x, e.y + 32);
+        taiGrad.addColorStop(0, '#fb7185');
+        taiGrad.addColorStop(0.6, '#e11d48');
+        taiGrad.addColorStop(1, '#fecdd3');
+        ctx.fillStyle = taiGrad;
+        ctx.beginPath();
+        ctx.ellipse(e.x + 24, e.y + 16, 23, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 尾びれ
+        ctx.beginPath();
+        ctx.moveTo(e.x + 42, e.y + 16);
+        ctx.lineTo(e.x + 56, e.y + 3);
+        ctx.lineTo(e.x + 56, e.y + 29);
+        ctx.fill();
+
+        // 目
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(e.x + 12, e.y + 13, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(e.x + 11, e.y + 13, 2, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        // ブラック星団の戦闘員（立体スーツ＋紫の星マスク）
+        const solGrad = ctx.createLinearGradient(e.x, e.y + 14, e.x + e.w, e.y + 56);
+        solGrad.addColorStop(0, '#334155');
+        solGrad.addColorStop(1, '#090d16');
+        ctx.fillStyle = solGrad;
+        ctx.beginPath();
+        ctx.roundRect(e.x + 4, e.y + 14, e.w - 8, e.h - 14, 6);
+        ctx.fill();
+        // 胸の「B」マーク
+        ctx.fillStyle = '#c084fc';
+        ctx.font = '900 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('B', e.x + e.w / 2, e.y + 38);
+        // 紫の星マスク
+        drawStarShape(e.x + e.w / 2, e.y + 12, 5, 16, 7, '#7e22ce', '#e879f9');
+    }
+    ctx.restore();
+}
+
+// ボス描画：超時空要塞ロボ「テンモン・カイザー」＆紫の星の被り物の「ブラック星博士」（3D立体投影・ジャイロリング追加）
+function drawBoss(b) {
+    ctx.save();
+    if (b.invulnFlash > 0) {
+        ctx.filter = 'brightness(2.2)';
+    }
+
+    const hoverY = Math.sin(performance.now() / 220) * 4;
+    const t = performance.now() / 500;
+
+    // 接地シャドウ
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(b.x + b.w / 2, GROUND_Y, 95, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(0, hoverY);
+
+    // 背面で回転する3Dプラネタリウム・ホログラムリング
+    ctx.save();
+    ctx.translate(b.x + b.w / 2, b.y + 115);
+    ctx.rotate(-0.25);
+    ctx.strokeStyle = b.phase === 2 ? 'rgba(244, 63, 94, 0.65)' : 'rgba(56, 189, 248, 0.55)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 115, 32, 0, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 1. ロボット本体（3D側面パーツ＋重厚な巨大メカボディ）
+    // 3D奥行き右側面装甲
+    ctx.fillStyle = b.phase === 2 ? '#3b0764' : '#475569';
+    ctx.beginPath();
+    ctx.roundRect(b.x + 28, b.y + 40, b.w - 30, b.h - 42, 16);
+    ctx.fill();
+
+    const bodyGrad = ctx.createLinearGradient(b.x + 15, b.y + 45, b.x + b.w - 15, b.y + b.h);
+    if (b.phase === 2) {
+        bodyGrad.addColorStop(0, '#7e22ce');
+        bodyGrad.addColorStop(0.5, '#4c1d95');
+        bodyGrad.addColorStop(1, '#1e1b4b');
+    } else {
+        bodyGrad.addColorStop(0, '#f8fafc');
+        bodyGrad.addColorStop(0.5, '#cbd5e1');
+        bodyGrad.addColorStop(1, '#64748b');
+    }
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(b.x + 15, b.y + 45, b.w - 30, b.h - 45, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    // 脚部ブースター噴射
+    ctx.fillStyle = b.phase === 2 ? '#f43f5e' : '#38bdf8';
+    ctx.beginPath();
+    ctx.moveTo(b.x + 30, b.y + b.h);
+    ctx.lineTo(b.x + 45, b.y + b.h + 18 + Math.random() * 8);
+    ctx.lineTo(b.x + 60, b.y + b.h);
+    ctx.moveTo(b.x + b.w - 60, b.y + b.h);
+    ctx.lineTo(b.x + b.w - 45, b.y + b.h + 18 + Math.random() * 8);
+    ctx.lineTo(b.x + b.w - 30, b.y + b.h);
+    ctx.fill();
+
+    // 肩のプラネタリウムドーム装甲（立体グラデーション）
+    [b.x + 15, b.x + b.w - 15].forEach(sx => {
+        const domeGrad = ctx.createRadialGradient(sx - 6, b.y + 58, 4, sx, b.y + 65, 26);
+        domeGrad.addColorStop(0, b.phase === 2 ? '#f0abfc' : '#ffffff');
+        domeGrad.addColorStop(1, b.phase === 2 ? '#701a75' : '#64748b');
+        ctx.fillStyle = domeGrad;
+        ctx.beginPath();
+        ctx.arc(sx, b.y + 65, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    });
+
+    // 胸部の巨大時計（第2形態ではカールツァイス製投影機コアが発光）
+    const clockCenterX = b.x + b.w / 2;
+    const clockCenterY = b.y + 125;
+    const clockGrad = ctx.createRadialGradient(clockCenterX, clockCenterY, 5, clockCenterX, clockCenterY, 40);
+    if (b.phase === 2) {
+        clockGrad.addColorStop(0, '#ffffff');
+        clockGrad.addColorStop(0.4, '#fb7185');
+        clockGrad.addColorStop(1, '#be123c');
+    } else {
+        clockGrad.addColorStop(0, '#ffffff');
+        clockGrad.addColorStop(0.7, '#fef08a');
+        clockGrad.addColorStop(1, '#eab308');
+    }
+    ctx.fillStyle = clockGrad;
+    ctx.beginPath();
+    ctx.arc(clockCenterX, clockCenterY, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // 時計の目盛り
+    for (let m = 0; m < 12; m++) {
+        const ang = (m / 12) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(clockCenterX + Math.cos(ang) * 32, clockCenterY + Math.sin(ang) * 32);
+        ctx.lineTo(clockCenterX + Math.cos(ang) * 38, clockCenterY + Math.sin(ang) * 38);
+        ctx.stroke();
+    }
+
+    // 回転する長針・短針ブレード
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(clockCenterX, clockCenterY);
+    ctx.lineTo(clockCenterX + Math.cos(b.clockAngle) * 32, clockCenterY + Math.sin(b.clockAngle) * 32);
+    ctx.moveTo(clockCenterX, clockCenterY);
+    ctx.lineTo(clockCenterX + Math.cos(b.clockAngle * 0.2) * 22, clockCenterY + Math.sin(b.clockAngle * 0.2) * 22);
+    ctx.stroke();
+
+    // 前面を横切る3Dプラネタリウム・ホログラムリング（軌道衛星付き）
+    ctx.save();
+    ctx.translate(b.x + b.w / 2, b.y + 115);
+    ctx.rotate(-0.25);
+    ctx.strokeStyle = b.phase === 2 ? '#fb7185' : '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 115, 32, 0, 0, Math.PI);
+    ctx.stroke();
+    // 3D軌道を周回するエネルギー衛星
+    const satX = Math.cos(t * 2) * 115;
+    const satY = Math.sin(t * 2) * 32;
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(satX, satY, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 2. コックピット上部に搭乗する宿敵「ブラック星博士」（紫の星の被り物）
+    const docX = b.x + b.w / 2;
+    const docY = b.y + 20;
+    // 黒マント
+    ctx.fillStyle = '#090d16';
+    ctx.beginPath();
+    ctx.moveTo(docX - 28, docY + 26);
+    ctx.lineTo(docX + 28, docY + 26);
+    ctx.lineTo(docX + 18, docY + 4);
+    ctx.lineTo(docX - 18, docY + 4);
+    ctx.fill();
+
+    // 特徴的な「紫の星の被り物」
+    drawStarShape(docX, docY, 5, 30, 14, '#7e22ce', '#f0abfc');
+
+    // 博士の顔（星の中央）
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath();
+    ctx.arc(docX, docY + 2, 11, 0, Math.PI * 2);
+    ctx.fill();
+    // 悪役らしい目とニヤリ口
+    ctx.fillStyle = '#000';
+    ctx.fillRect(docX - 5, docY - 1, 3.5, 3.5);
+    ctx.fillRect(docX + 2, docY - 1, 3.5, 3.5);
+    ctx.beginPath();
+    ctx.arc(docX, docY + 4, 4.5, 0, Math.PI);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// 敵の弾・ダジャレ弾幕の描画
+function drawEnemyProjectile(ep) {
+    ctx.save();
+    if (ep.type === 'DAJARE') {
+        // 物理オブジェクト化した寒いダジャレ吹き出し
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#9333ea';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(ep.x, ep.y, ep.w, ep.h, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#581c87';
+        ctx.font = '900 12px "M PLUS Rounded 1c", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ep.label, ep.x + ep.w / 2, ep.y + 21);
+    } else if (ep.type === 'INK') {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(ep.x + 9, ep.y + 9, 9, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (ep.type === 'DASHI') {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(ep.x + 8, ep.y + 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (ep.type === 'METEOR') {
+        drawStarShape(ep.x + 13, ep.y + 13, 5, 14, 6, '#f43f5e', '#fde047');
+    } else {
+        ctx.fillStyle = '#e879f9';
+        ctx.beginPath();
+        ctx.arc(ep.x + 11, ep.y + 11, 11, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+// 明石名物アイテム描画
+function drawItem(item) {
+    const bobY = Math.sin(performance.now() / 200) * 4;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.beginPath();
+    ctx.arc(item.x + 18, item.y + 18 + bobY, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    const icon = item.type === 'TAKO' ? '🐙' :
+                 item.type === 'NORI' ? '🍙' :
+                 item.type === 'AKASHIYAKI_ITEM' ? '🟡' :
+                 item.type === 'KUGINI' ? '🐟' : '⏱️';
+    ctx.fillText(icon, item.x + 18, item.y + 25 + bobY);
+    ctx.restore();
+}
+
+// 星形ポリゴン描画ヘルパー
+function drawStarShape(cx, cy, spikes, outerRadius, innerRadius, fillColor, strokeColor) {
+    let rot = Math.PI / 2 * 3;
+    let x = cx;
+    let y = cy;
+    const step = Math.PI / spikes;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerRadius);
+    for (let i = 0; i < spikes; i++) {
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+    }
+    ctx.lineTo(cx, cy - outerRadius);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    if (strokeColor) {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
+// 画面上部HUD描画
+function drawHUD() {
+    ctx.save();
+    // 左上ステータス背景パネル
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+    ctx.beginPath();
+    ctx.roundRect(14, 14, 290, 82, 12);
+    ctx.fill();
+    ctx.strokeStyle = player.hero === 'RED' ? '#ef4444' : '#3b82f6';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // ヒーロー名表示
+    ctx.fillStyle = player.hero === 'RED' ? '#fca5a5' : '#93c5fd';
+    ctx.font = '900 14px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(player.hero === 'RED' ? '★ シゴセンジャー・レッド (剣)' : '★ シゴセンジャー・ブルー (星弾)', 26, 35);
+
+    // HPバー
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(26, 44, 200, 14);
+    ctx.fillStyle = player.hp > 30 ? '#22c55e' : '#ef4444';
+    ctx.fillRect(26, 44, (player.hp / player.maxHp) * 200, 14);
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 11px sans-serif';
+    ctx.fillText(`HP ${player.hp}/${player.maxHp}`, 234, 55);
+
+    // 135度子午線ゲージ（タイムストップ用）
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(26, 66, 200, 14);
+    ctx.fillStyle = timeGauge >= 40 ? '#facc15' : '#94a3b8';
+    ctx.fillRect(26, 66, (timeGauge / 100) * 200, 14);
+    ctx.fillStyle = '#fde047';
+    ctx.fillText(`135° ${Math.floor(timeGauge)}%`, 234, 77);
+
+    // 右上スコア＆標準時タイマー
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+    ctx.beginPath();
+    ctx.roundRect(GAME_W - 230, 14, 216, 58, 12);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '900 15px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`SCORE: ${score}`, GAME_W - 26, 38);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`標準時経過: ${elapsedSeconds}秒`, GAME_W - 26, 60);
+
+    // ボス戦時のボスHPバー
+    if (boss && currentState === STATE.BOSS) {
+        const barW = 460;
+        const barX = (GAME_W - barW) / 2;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(barX - 10, 86, barW + 20, 42, 10);
+        ctx.fill();
+
+        ctx.fillStyle = '#e879f9';
+        ctx.font = '900 13px "M PLUS Rounded 1c", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('BOSS: ブラック星博士 ＆ 超時空要塞ロボ テンモン・カイザー', GAME_W / 2, 103);
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(barX, 110, barW, 10);
+        ctx.fillStyle = boss.phase === 2 ? '#f43f5e' : '#a855f7';
+        ctx.fillRect(barX, 110, (boss.hp / boss.maxHp) * barW, 10);
+    }
+
+    ctx.restore();
+}
+
+/**
+ * ============================================================================
+ * ユーティリティ関数（当たり判定・パーティクル・テキスト演出）
+ * ============================================================================
+ */
+function rectIntersect(a, b) {
+    return a.x < b.x + b.w &&
+           a.x + a.w > b.x &&
+           a.y < b.y + b.h &&
+           a.y + a.h > b.y;
+}
+
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.5 + Math.random() * 4.5;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.5,
+            size: 2.5 + Math.random() * 4,
+            color: color,
+            life: 20 + Math.floor(Math.random() * 20)
+        });
+    }
+}
+
+function spawnShockwave(x, y, color) {
+    shockwaves.push({
+        x: x,
+        y: y,
+        r: 12,
+        speed: 7.5,
+        alpha: 0.9,
+        color: color
+    });
+}
+
+function addFloatingText(x, y, text, color) {
+    floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        color: color,
+        life: 55
+    });
+}
+
+/**
+ * ============================================================================
+ * メインループ＆イベントリスナー登録
+ * ============================================================================
+ */
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// キーボード操作イベント
+window.addEventListener('keydown', (e) => {
+    if (currentState === STATE.DIALOGUE && (e.key === 'z' || e.key === 'Z' || e.key === 'Enter' || e.key === ' ')) {
+        advanceDialogue();
+        return;
+    }
+
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
+        e.preventDefault();
+        triggerJump();
+    }
+    if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
+        triggerAttack();
+    }
+    if (e.key === 'x' || e.key === 'X' || e.key === 'Shift') {
+        switchHero();
+    }
+    if (e.key === 'c' || e.key === 'C') {
+        triggerTimeStop();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+});
+
+// 画面下部バーチャルボタン（マウス・タッチ両対応）
+function bindHoldButton(id, keyName) {
+    const btn = document.getElementById(id);
+    const press = (e) => {
+        e.preventDefault();
+        initAudio();
+        keys[keyName] = true;
+        btn.classList.add('active');
+    };
+    const release = (e) => {
+        e.preventDefault();
+        keys[keyName] = false;
+        btn.classList.remove('active');
+    };
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+    btn.addEventListener('touchstart', press, { passive: false });
+    btn.addEventListener('touchend', release);
+}
+
+function bindTapButton(id, callback) {
+    const btn = document.getElementById(id);
+    const trigger = (e) => {
+        e.preventDefault();
+        initAudio();
+        if (currentState === STATE.DIALOGUE) {
+            advanceDialogue();
+            return;
+        }
+        callback();
+    };
+    btn.addEventListener('mousedown', trigger);
+    btn.addEventListener('touchstart', trigger, { passive: false });
+}
+
+bindHoldButton('btn-left', 'left');
+bindHoldButton('btn-right', 'right');
+bindTapButton('btn-jump', triggerJump);
+bindTapButton('btn-attack', triggerAttack);
+bindTapButton('btn-switch', switchHero);
+bindTapButton('btn-time', triggerTimeStop);
+
+// ウィンドウロード時に初期化＆ループ開始
+window.onload = function () {
+    resizeCanvas();
+    initStage();
+    gameLoop();
+};
+</script>
+</body>
+</html>
